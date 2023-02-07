@@ -6,6 +6,8 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -19,8 +21,9 @@ public class ImportCSV {
 	private static final String PASSWORD = "Passw0rd!";
 	private static final String UPDATE = "INSERT INTO MarrageList VALUES(?,?,?,?)";
 
-	public static void main(String[] args) {
-		File file = new File("C:\\Users\\Student\\Desktop\\期中專題\\STOCK_DAY_AVG_ALL_20230204.csv");
+	public static void main(String[] args) throws MalformedURLException, SQLException {
+//		File file = new File("C:\\Users\\Student\\Desktop\\期中專題\\STOCK_DAY_AVG_ALL_20230204.csv");
+		String urlString = "https://www.twse.com.tw/exchangeReport/STOCK_DAY_AVG_ALL?response=open_data";
 		Connection conn = null;
 		try {
 			Class.forName(JDBC_DRIVER);
@@ -28,11 +31,18 @@ public class ImportCSV {
 			// TODO Auto-generated catch block
 			e3.printStackTrace();
 		}
-
-		try (FileInputStream fis = new FileInputStream(file);
-				InputStreamReader isr = new InputStreamReader(fis);
-				BufferedReader br = new BufferedReader(isr);) {
+		
+//		FileInputStream fis = new FileInputStream(file);
+//		InputStreamReader isr = new InputStreamReader(fis);
+//		BufferedReader br = new BufferedReader(isr);) {
+		
+		URL url = new URL(urlString);
+												//openStream() 用於讀取網頁,FileInputStream()用於讀取電腦內檔案
+		try (BufferedReader br = new BufferedReader(new InputStreamReader(url.openStream()))){
+			
 			String line;
+			conn = DriverManager.getConnection(DB_URL, USER, PASSWORD);
+			PreparedStatement pstmt = conn.prepareStatement(UPDATE);
 			while ((line = br.readLine()) != null) {
 				System.out.println(line);
 				line = line.replace("\"", "");// 把資料中"變成空格,才能轉檔
@@ -40,8 +50,6 @@ public class ImportCSV {
 //						System.out.println(columns);
 
 				try {
-					conn = DriverManager.getConnection(DB_URL, USER, PASSWORD);
-					PreparedStatement pstmt = conn.prepareStatement(UPDATE);
 					pstmt.setString(1, columns[0]);
 					pstmt.setString(2, columns[1]);
 					try {
@@ -54,20 +62,18 @@ public class ImportCSV {
 					} catch (Exception e) {
 						pstmt.setNull(4, Types.DECIMAL);
 					}
+//					pstmt.addBatch();//再研究一下怎麼用
 					int count = pstmt.executeUpdate();
-					System.out.println("成功匯入");
-					pstmt.close();
+//					System.out.println("成功匯入");
 				} catch (SQLException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
-				} finally {
-					try {
-						conn.close();
-					} catch (SQLException e) {
-						e.printStackTrace();
-					}
 				}
 			}
+
+			pstmt.close();
+			conn.close();
+			
 		} catch (FileNotFoundException e2) {
 			// TODO Auto-generated catch block
 			e2.printStackTrace();
